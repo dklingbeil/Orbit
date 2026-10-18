@@ -213,3 +213,32 @@ final class TimingTests: XCTestCase {
         XCTAssertEqual(info.audioChannels, 2)
     }
 }
+
+final class EncoderFallbackTests: XCTestCase {
+    /// Machines without a working ImageIO AVIF encoder (e.g. CI VMs) go through FFmpeg.
+    func testAVIFThroughFFmpeg() async throws {
+        guard let ffmpeg = FFmpeg.locate(), ffmpeg.has("libsvtav1") || ffmpeg.has("libaom-av1") else {
+            throw XCTSkip("No FFmpeg with an AV1 encoder")
+        }
+        let caps = Capabilities(ffmpeg: ffmpeg, cwebp: nil, libreOffice: nil, iwork: IWork(pages: false, keynote: false, numbers: false),
+                                imageIOWritableTypes: ["public.png", "public.jpeg"])
+        XCTAssertEqual(caps.avifEncoder, .ffmpeg)
+
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        // An odd-sized source exercises the even-dimension scaling.
+        let context = CGContext(data: nil, width: 101, height: 77, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        context.setFillColor(CGColor(red: 0.2, green: 0.5, blue: 0.9, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: 101, height: 77))
+        let png = dir.appendingPathComponent("odd.png")
+        try ImageIOSupport.write(context.makeImage()!, to: png, format: .png, quality: 1, metadata: nil)
+
+        let work = dir.appendingPathComponent("work")
+        try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
+        let outputs = try await Converter.convert(png, to: .avif, context: JobContext(workDirectory: work, capabilities: caps, settings: EngineSettings()))
+        let size = (try outputs.first?.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        XCTAssertGreaterThan(size, 0)
+    }
+}

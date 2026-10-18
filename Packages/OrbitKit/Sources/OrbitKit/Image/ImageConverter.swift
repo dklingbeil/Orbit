@@ -22,11 +22,19 @@ enum ImageConverter {
         case .webp:
             try await encodeWebP(loaded.image, to: output, quality: quality, context: context)
         case .avif where context.capabilities.avifEncoder == .ffmpeg:
-            try await encodeWithFFmpeg(loaded.image, to: output, codec: ["-c:v", context.capabilities.ffmpeg?.has("libsvtav1") == true ? "libsvtav1" : "libaom-av1",
-                                                                          "-crf", "\(Int((1 - quality) * 50 + 10))", "-still-picture", "1"], context: context)
+            try await encodeWithFFmpeg(loaded.image, to: output, codec: avifCodec(quality: quality, ffmpeg: try context.ffmpeg), context: context)
         default:
             try ImageIOSupport.write(loaded.image, to: output, format: target, quality: quality, metadata: metadata)
         }
+    }
+
+    /// Still-image AV1: SVT-AV1 is fast; libaom is the fallback. (`-still-picture` is libaom-only.)
+    static func avifCodec(quality: Double, ffmpeg: FFmpeg) -> [String] {
+        let crf = Int((1 - quality) * 50 + 10)
+        if ffmpeg.has("libsvtav1") {
+            return ["-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-c:v", "libsvtav1", "-crf", "\(crf)", "-preset", "8", "-pix_fmt", "yuv420p"]
+        }
+        return ["-c:v", "libaom-av1", "-crf", "\(crf)", "-cpu-used", "6", "-still-picture", "1", "-pix_fmt", "yuv420p"]
     }
 
     static func encodeWebP(_ image: CGImage, to output: URL, quality: Double, context: JobContext) async throws {

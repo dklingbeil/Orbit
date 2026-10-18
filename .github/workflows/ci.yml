@@ -15,6 +15,7 @@ jobs:
       - name: Engine unit tests
         run: swift test --package-path Packages/OrbitKit
       - name: Conversion smoke test
+        shell: bash  # bash with pipefail, so failures aren't masked by tee
         run: scripts/smoke-test.sh "$RUNNER_TEMP/smoke" 2>&1 | tee smoke.log
       - name: Upload smoke test log
         if: always()
