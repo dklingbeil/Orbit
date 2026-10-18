@@ -18,7 +18,7 @@ final class WelcomeWindowController: NSObject, NSWindowDelegate {
                               styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.isMovableByWindowBackground = true
+        window.isMovableByWindowBackground = false
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.contentView = NSHostingView(rootView: WelcomeView(env: AppEnvironment.shared) { [weak self] in self?.close() })
@@ -127,7 +127,7 @@ struct WelcomeView: View {
                 }
                 .padding(10)
                 .background(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.accentColor.opacity(0.6), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
-                .onDrag { NSItemProvider(contentsOf: sample) ?? NSItemProvider() }
+                .overlay(FileDragArea(urls: [sample], image: NSImage(contentsOf: sample)))
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Other ways in").font(.system(size: 12, weight: .semibold))

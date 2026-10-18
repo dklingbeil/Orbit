@@ -29,6 +29,11 @@ struct WheelView: View {
 
     private var g: WheelGeometry.Type { WheelGeometry.self }
 
+    /// Blur materials don't render offscreen (README images), so those use a solid fill.
+    private var backdrop: AnyShapeStyle {
+        model.solidBackgrounds ? AnyShapeStyle(Color(white: 0.17)) : AnyShapeStyle(.regularMaterial)
+    }
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             Color.clear
@@ -117,7 +122,7 @@ struct WheelView: View {
 
         AnnularSector(start: arc.start - 1.5, end: arc.start + arc.width * CGFloat(children.count) + 1.5,
                       inner: g.childInner - 3, outer: g.childOuter + 3)
-            .fill(.regularMaterial)
+            .fill(backdrop)
             .shadow(color: .black.opacity(0.25), radius: 10, y: 3)
 
         ForEach(Array(children.enumerated()), id: \.element.id) { index, child in
@@ -203,7 +208,7 @@ struct WheelView: View {
             }
         }
         .padding(3)
-        .background(Capsule().fill(.regularMaterial).shadow(color: .black.opacity(0.18), radius: 8, y: 2))
+        .background(Capsule().fill(backdrop).shadow(color: .black.opacity(0.18), radius: 8, y: 2))
         .frame(width: g.size.width)
         .position(x: g.size.width / 2, y: g.tabsTop + g.tabsHeight / 2 + 3)
     }

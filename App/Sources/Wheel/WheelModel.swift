@@ -123,6 +123,8 @@ final class WheelModel: ObservableObject {
     @Published var shown = false
     @Published var summary = SelectionSummary(icon: NSImage(), title: "", subtitle: "")
     @Published var keys: [WheelMode: String] = [.convert: "⇧", .tools: "⌘", .actions: "⌃"]
+    /// Use solid fills instead of blur materials (for offscreen rendering).
+    var solidBackgrounds = false
     /// Tab frames in AppKit coordinates, reported by the SwiftUI layout.
     var tabFrames: [WheelMode: CGRect] = [:]
 

@@ -15,6 +15,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         UNUserNotificationCenter.current().delegate = env.jobs
 
         let arguments = ProcessInfo.processInfo.arguments
+        #if DEBUG
+        if let index = arguments.firstIndex(of: "--render-promo"), index + 1 < arguments.count {
+            let output = URL(fileURLWithPath: arguments[index + 1])
+            env.whenReady { PromoRenderer.run(outputDirectory: output, capabilities: env.capabilities) }
+            return
+        }
+        #endif
         if let index = arguments.firstIndex(of: "--demo-wheel") {
             // Developer aid: `Orbit.app/Contents/MacOS/Orbit --demo-wheel file…` shows the wheel for files.
             let files = arguments[(index + 1)...].prefix { !$0.hasPrefix("--") }.map { URL(fileURLWithPath: $0) }

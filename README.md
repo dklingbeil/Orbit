@@ -2,7 +2,13 @@
 
 # Orbit
 
-**Drag a file. Tap a key. Drop it on a format.**
+<p align="center"><b>Drag a file. Tap a key. Drop it on a format.</b></p>
+
+<p align="center">
+  <a href="https://github.com/dklingbeil/Orbit/releases/latest"><b>Download for Mac</b></a> · Apple silicon · macOS 13+
+</p>
+
+<p align="center"><img src="docs/demo.gif" width="900" alt="Dragging photo.heic, tapping Shift, and dropping it on the WebP slice of Orbit's wheel"></p>
 
 Orbit is a free, open-source file converter for macOS that lives in your menu bar. Start dragging any file, tap a modifier key, and a radial wheel appears under your pointer. Drop the file on a slice and the result appears next to the original. Everything runs locally and nothing is uploaded.
 
@@ -48,13 +54,26 @@ Settings › Engines shows what your Mac can do right now. Anything unavailable 
 - **PDF:** Compress, Split (every page or ranges), Merge (PDFs and images), Rotate, OCR (make searchable), Protect, Unlock
 - **Other:** Shift subtitle timing, Extract archives, ZIP anything
 
+<p align="center"><img src="docs/tools.png" width="700" alt="The Tools wheel with Compress's Light, Medium and Strong options open"></p>
+
 Originals are never modified. Results go next to the original by default; you can pick Downloads, Desktop or another folder in Settings. If a name is taken, Orbit adds a number.
 
 ## Install
 
 Orbit needs an Apple silicon Mac running macOS 13 Ventura or later.
 
-Prebuilt releases will be published on the [Releases](https://github.com/dklingbeil/Orbit/releases) page. Until then, build from source.
+1. Download the **.dmg** from the [latest release](https://github.com/dklingbeil/Orbit/releases/latest).
+2. Open it and drag **Orbit** into **Applications**.
+3. Open Orbit. The welcome window has a sample picture you can drag to try the wheel right away.
+
+FFmpeg is bundled, so audio and video work without installing anything else.
+
+> [!NOTE]
+> Orbit isn't notarized by Apple yet, so macOS blocks it the first time you open it. Go to **System Settings › Privacy & Security** and click **Open Anyway**, or run this in Terminal:
+>
+> ```bash
+> xattr -dr com.apple.quarantine /Applications/Orbit.app
+> ```
 
 ### Build from source
 
@@ -139,6 +158,8 @@ make smoke
 ```
 
 `make test` runs the engine unit tests. `make smoke` generates sample files and runs every conversion and tool through the CLI.
+
+The README visuals are rendered offscreen from the real wheel views. Regenerate them after UI changes with `scripts/make-promo.sh`.
 
 Debug builds also accept `--demo-wheel <files> [--tools|--actions]` to open the wheel without dragging, plus `--welcome` and `--settings`.
 

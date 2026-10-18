@@ -115,15 +115,18 @@ struct ShelfView: View {
                 VStack(spacing: 2) {
                     ForEach(model.urls, id: \.self) { url in
                         HStack(spacing: 8) {
-                            Image(nsImage: model.thumbnails[url] ?? NSImage())
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 24, height: 24)
-                            Text(url.lastPathComponent)
-                                .font(.system(size: 11))
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                            Spacer(minLength: 4)
+                            HStack(spacing: 8) {
+                                Image(nsImage: model.thumbnails[url] ?? NSImage())
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 24, height: 24)
+                                Text(url.lastPathComponent)
+                                    .font(.system(size: 11))
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                Spacer(minLength: 4)
+                            }
+                            .overlay(FileDragArea(urls: [url], image: model.thumbnails[url]) { NSWorkspace.shared.open(url) })
                             Button {
                                 model.remove(url)
                             } label: {
@@ -132,9 +135,6 @@ struct ShelfView: View {
                             .buttonStyle(.plain)
                         }
                         .padding(.vertical, 3)
-                        .contentShape(Rectangle())
-                        .onDrag { NSItemProvider(contentsOf: url) ?? NSItemProvider() }
-                        .onTapGesture(count: 2) { NSWorkspace.shared.open(url) }
                         .help(url.path)
                     }
                 }
@@ -191,6 +191,8 @@ final class DragAllNSView: NSView, NSDraggingSource {
     }
 
     override func mouseDown(with event: NSEvent) {}
+    override var mouseDownCanMoveWindow: Bool { false }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
         context == .outsideApplication ? [.copy, .move, .link, .generic] : .copy
