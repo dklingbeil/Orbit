@@ -68,6 +68,7 @@ public enum Catalog {
         if (mediaSource || gifToVideo) && !caps.hasFFmpeg { return "Needs FFmpeg" }
         if target == .webp && caps.webpEncoder == nil { return "Needs a WebP encoder (FFmpeg with libwebp, or cwebp)" }
         if target == .avif && caps.avifEncoder == nil { return "Needs an AVIF encoder" }
+        if target == .heic && !caps.canEncodeHEIC { return "This Mac can't encode HEIC" }
         if target == .pages && !caps.iwork.pages { return "Requires Pages" }
         switch source {
         case .pages where !caps.iwork.pages && caps.libreOffice == nil:

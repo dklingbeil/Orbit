@@ -30,6 +30,7 @@ enum ImageTools {
         case .raw: return .jpg
         case .webp: return context.capabilities.webpEncoder == nil ? .png : .webp
         case .avif: return context.capabilities.avifEncoder == nil ? .png : .avif
+        case .heic: return context.capabilities.canEncodeHEIC ? .heic : .jpg
         default: return source
         }
     }

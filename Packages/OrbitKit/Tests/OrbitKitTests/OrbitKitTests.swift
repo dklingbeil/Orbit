@@ -187,6 +187,14 @@ final class TimingTests: XCTestCase {
         XCTAssertEqual(try ImageTools.targetSize(option: "custom", text: "200x200", width: 400, height: 200).0, 200)
     }
 
+    func testHardwareEncodeFallsBackToSoftware() {
+        // /usr/bin/true reports no encoders, so the fallback is MPEG-4.
+        let ffmpeg = FFmpeg(url: URL(fileURLWithPath: "/usr/bin/true"))
+        let args = ["-i", "in.mov", "-c:v", "h264_videotoolbox", "-q:v", "55", "-pix_fmt", "yuv420p", "out.mp4"]
+        XCTAssertEqual(ffmpeg.softwareFallback(for: args), ["-i", "in.mov", "-c:v", "mpeg4", "-q:v", "4", "-pix_fmt", "yuv420p", "out.mp4"])
+        XCTAssertNil(ffmpeg.softwareFallback(for: ["-i", "a.wav", "-c:a", "flac", "b.flac"]))
+    }
+
     func testMediaInfoParsing() {
         let text = """
         Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'vt.mp4':

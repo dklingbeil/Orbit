@@ -129,7 +129,39 @@ public final class FFmpeg: @unchecked Sendable {
     }
 
     /// Runs ffmpeg with progress reporting. `duration` is the expected output length in seconds.
+    /// If a hardware (VideoToolbox) encode fails — as it does in virtual machines — it is retried in software.
     public func run(
+        _ arguments: [String],
+        duration: Double?,
+        progress: (@Sendable (Double?) -> Void)? = nil
+    ) async throws {
+        do {
+            try await runOnce(arguments, duration: duration, progress: progress)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            guard let fallback = softwareFallback(for: arguments) else { throw error }
+            try await runOnce(fallback, duration: duration, progress: progress)
+        }
+    }
+
+    /// Swaps a VideoToolbox encoder for x264 (or MPEG-4 if x264 isn't available).
+    func softwareFallback(for arguments: [String]) -> [String]? {
+        guard let index = arguments.firstIndex(where: { $0 == "h264_videotoolbox" || $0 == "hevc_videotoolbox" }),
+              index > 0, arguments[index - 1] == "-c:v" else { return nil }
+        var replaced = arguments
+        var end = index
+        var crf = 23
+        if index + 2 < arguments.count, arguments[index + 1] == "-q:v", let q = Int(arguments[index + 2]) {
+            crf = [65: 20, 55: 23, 45: 27, 38: 30][q] ?? 23
+            end = index + 2
+        }
+        let software = has("libx264") ? ["libx264", "-crf", "\(crf)", "-preset", "medium"] : ["mpeg4", "-q:v", "4"]
+        replaced.replaceSubrange(index...end, with: software)
+        return replaced
+    }
+
+    private func runOnce(
         _ arguments: [String],
         duration: Double?,
         progress: (@Sendable (Double?) -> Void)? = nil

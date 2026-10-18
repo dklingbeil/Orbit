@@ -15,10 +15,14 @@ ORBIT="$ROOT/Packages/OrbitKit/.build/debug/orbit"
 
 command -v ffmpeg >/dev/null || { echo "ffmpeg is required for fixtures"; exit 1; }
 
+echo "Engines:"
+"$ORBIT" caps | sed 's/^/  /'
+
 echo "Creating fixtures in $FIX"
 ffmpeg -hide_banner -loglevel error -y -f lavfi -i "testsrc2=size=640x360:rate=1" -frames:v 1 "$FIX/sample.png"
 sips -s format jpeg "$FIX/sample.png" --out "$FIX/sample.jpg" >/dev/null
-sips -s format heic "$FIX/sample.png" --out "$FIX/sample.heic" >/dev/null
+# HEIC encoding needs the media engine, which virtual machines (CI runners) lack.
+sips -s format heic "$FIX/sample.png" --out "$FIX/sample.heic" >/dev/null 2>&1 || rm -f "$FIX/sample.heic"
 sips -s format tiff "$FIX/sample.png" --out "$FIX/sample.tiff" >/dev/null
 sips -s format bmp "$FIX/sample.png" --out "$FIX/sample.bmp" >/dev/null
 ffmpeg -hide_banner -loglevel error -y -f lavfi -i "testsrc2=size=320x180:rate=10" -t 1 "$FIX/sample.gif"
@@ -140,12 +144,14 @@ tool() {
     fi
 }
 MP3="$OUT/sample.wav/sample.mp3"
+HEIC="$FIX/sample.heic"
+[ -f "$HEIC" ] || HEIC="$FIX/sample.jpg"
 MOV="$OUT/sample.mp4/sample.mov"
 PAGE="$OUT/document.pdf/document PNG/document-1.png"
 
 tool "image compress"     imageCompress --option medium "$FIX/sample.jpg"
 tool "png compress"       imageCompress --option strong "$FIX/sample.png"
-tool "image resize 50%"   imageResize --option 50 "$FIX/sample.heic"
+tool "image resize 50%"   imageResize --option 50 "$HEIC"
 tool "image resize 300w"  imageResize --option custom --text 300w "$FIX/sample.png"
 tool "image crop"         imageCrop --crop 10,10,200,100 "$FIX/sample.jpg"
 tool "image rotate"       imageRotate --option right "$FIX/sample.jpg"

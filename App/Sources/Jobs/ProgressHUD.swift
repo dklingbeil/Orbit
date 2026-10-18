@@ -31,20 +31,37 @@ final class ProgressHUD: ObservableObject {
         if anchor == nil || jobs.allSatisfy({ !$0.isActive }) { anchor = NSEvent.mouseLocation }
         present()
         let id = toasts.last!.id
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) { [weak self] in
-            self?.toasts.removeAll { $0.id == id }
-            self?.scheduleHideIfIdle()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            guard let self, let toast = self.toasts.first(where: { $0.id == id }) else { return }
+            if self.hovering { return self.scheduleHideIfIdle() }
+            self.dismiss(toast)
         }
     }
 
     func jobsChanged() {
         objectWillChange.send()
+        // A finished row can be taller than a progress bar (e.g. an error message); re-measure.
+        DispatchQueue.main.async { [weak self] in self?.resize() }
         scheduleHideIfIdle()
     }
 
     func dismiss(_ job: Job) {
         jobs.removeAll { $0.id == job.id }
-        scheduleHideIfIdle()
+        if jobs.isEmpty && toasts.isEmpty { hideNow() } else { resize(); scheduleHideIfIdle() }
+    }
+
+    func dismiss(_ toast: Toast) {
+        toasts.removeAll { $0.id == toast.id }
+        if jobs.isEmpty && toasts.isEmpty { hideNow() } else { resize(); scheduleHideIfIdle() }
+    }
+
+    private func hideNow() {
+        hideWorkItem?.cancel()
+        panel?.orderOut(nil)
+        jobs = []
+        toasts = []
+        anchor = nil
+        hovering = false
     }
 
     private func present() {
@@ -91,12 +108,10 @@ final class ProgressHUD: ObservableObject {
         let failed = jobs.contains { if case .failed = $0.state { return true }; return false }
         let item = DispatchWorkItem { [weak self] in
             guard let self, !self.hovering else { self?.scheduleHideIfIdle(); return }
-            self.panel?.orderOut(nil)
-            self.jobs = []
-            self.anchor = nil
+            self.hideNow()
         }
         hideWorkItem = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + (failed ? 8 : 2.8), execute: item)
+        DispatchQueue.main.asyncAfter(deadline: .now() + (failed ? 4.5 : 2), execute: item)
     }
 }
 
@@ -123,6 +138,7 @@ struct HUDView: View {
                 .contentShape(Rectangle())
                 .onTapGesture {
                     if !toast.reveal.isEmpty { NSWorkspace.shared.activateFileViewerSelecting(toast.reveal) }
+                    hud.dismiss(toast)
                 }
             }
         }
@@ -160,9 +176,19 @@ struct JobRow: View {
         }
         .contentShape(Rectangle())
         .onTapGesture {
+            // Click to reveal a result, or to dismiss a finished or failed card.
             if !job.outputs.isEmpty { NSWorkspace.shared.activateFileViewerSelecting(job.outputs) }
+            if !job.isActive { hud.dismiss(job) }
         }
-        .help(job.outputs.isEmpty ? job.name : "Show in Finder")
+        .help(helpText)
+    }
+
+    private var helpText: String {
+        switch job.state {
+        case .done: return "Show in Finder"
+        case .failed(let message): return message
+        default: return job.name
+        }
     }
 
     @ViewBuilder private var status: some View {
@@ -180,6 +206,7 @@ struct JobRow: View {
                 .font(.system(size: 10.5)).foregroundColor(.secondary).lineLimit(1).truncationMode(.middle)
         case .failed(let message):
             Text(message).font(.system(size: 10.5)).foregroundColor(.orange).lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
         case .cancelled:
             Text("Cancelled").font(.system(size: 10.5)).foregroundColor(.secondary)
         }

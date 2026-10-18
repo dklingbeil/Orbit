@@ -19,7 +19,11 @@ public final class Capabilities: @unchecked Sendable {
 
     /// Probes the system. Runs a couple of quick subprocesses, so call it off the main thread.
     public static func detect(ffmpegPath: String? = nil) -> Capabilities {
-        let writable = Set((CGImageDestinationCopyTypeIdentifiers() as? [String]) ?? [])
+        var writable = Set((CGImageDestinationCopyTypeIdentifiers() as? [String]) ?? [])
+        // HEIC/AVIF are listed even where the encoder doesn't work (e.g. virtual machines), so try them.
+        for type in ["public.heic", "public.avif"] where writable.contains(type) && !canEncode(type) {
+            writable.remove(type)
+        }
         return Capabilities(
             ffmpeg: FFmpeg.locate(override: ffmpegPath),
             cwebp: ProcessRunner.which("cwebp"),
@@ -28,6 +32,21 @@ public final class Capabilities: @unchecked Sendable {
             imageIOWritableTypes: writable
         )
     }
+
+    private static func canEncode(_ type: String) -> Bool {
+        guard let context = CGContext(data: nil, width: 64, height: 64, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+        context.setFillColor(CGColor(red: 0.4, green: 0.3, blue: 0.9, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: 64, height: 64))
+        guard let image = context.makeImage() else { return false }
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(data, type as CFString, 1, nil) else { return false }
+        CGImageDestinationAddImage(destination, image, nil)
+        return CGImageDestinationFinalize(destination) && data.length > 0
+    }
+
+    public var canEncodeHEIC: Bool { imageIOWritableTypes.contains("public.heic") }
 
     public var hasFFmpeg: Bool { ffmpeg != nil }
 
@@ -59,6 +78,7 @@ public final class Capabilities: @unchecked Sendable {
         [
             ("FFmpeg", ffmpeg.map { "\($0.version) — \($0.url.path)" } ?? "Not found"),
             ("WebP encoder", webpEncoder.map { $0 == .ffmpeg ? "FFmpeg (libwebp)" : "cwebp" } ?? "Not available"),
+            ("HEIC encoder", canEncodeHEIC ? "ImageIO" : "Not available"),
             ("AVIF encoder", avifEncoder.map { $0 == .imageIO ? "ImageIO" : "FFmpeg" } ?? "Not available"),
             ("LibreOffice", libreOffice?.soffice.path ?? "Not found"),
             ("Pages", iwork.pages ? "Installed" : "Not installed"),
