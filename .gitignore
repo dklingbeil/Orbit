@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Xcode (the project is generated from project.yml by XcodeGen)
+Orbit.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+build/
+.build/
+
+# Swift Package Manager
+Packages/OrbitKit/.build/
+Packages/OrbitKit/.swiftpm/
+*.resolved
+
+# Bundled binaries are fetched, not committed
+Vendor/ffmpeg/
+dist/
